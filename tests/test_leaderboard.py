@@ -20,12 +20,17 @@ def test_list_contains_submitted_score(authed_client):
 
 
 def test_leaderboard_sorted_descending():
-    players = []
+    written = []
+    owner_ids = []
     for s in (10, 300, 150):
         c = NakamaClient(BASE_URL, SERVER_KEY)
         c.session(f"lb-{uuid.uuid4()}")
         c.write_leaderboard_record(LEADERBOARD_ID, score=s)
-        players.append(c)
-    resp = players[0].list_leaderboard_records(LEADERBOARD_ID, limit=100)
-    scores = [int(r["score"]) for r in resp.json().get("records", [])]
-    assert scores == sorted(scores, reverse=True)
+        owner_ids.append(c.get_account().json()["user"]["id"])
+        written.append(s)
+    reader = NakamaClient(BASE_URL, SERVER_KEY)
+    reader.session(f"lb-reader-{uuid.uuid4()}")
+    resp = reader.list_leaderboard_records(LEADERBOARD_ID, owner_ids=owner_ids)
+    got = [int(r["score"]) for r in resp.json().get("owner_records", [])]
+    assert sorted(got) == sorted(written)
+    assert got == sorted(got, reverse=True)
